@@ -11,5 +11,6 @@ Add issues and PRs into project automatically!
 ## Quick Start
 
 ```shell
-go run github.com/Xuanwo/auto-add-to-project
+go install github.com/Xuanwo/auto-add-to-project
+./auto-add-to-project
 ```

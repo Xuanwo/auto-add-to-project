@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/google/go-github/v47/github"
-	"github.com/shurcooL/githubv4"
-	"golang.org/x/oauth2"
 	"log"
 	"os"
 	"strconv"
+
+	"github.com/google/go-github/v47/github"
+	"github.com/shurcooL/githubv4"
+	"golang.org/x/oauth2"
 )
 
 const (

@@ -125,20 +125,36 @@ func main() {
 			if err != nil {
 				log.Fatalf("unmarshal IssuesEvent failed: %s", err)
 			}
-			if payload.GetIssue().GetUser().GetLogin() != user && payload.GetIssue().GetAssignee().GetLogin() != user {
+			// If this issue is created by myself.
+			if payload.GetIssue().GetUser().GetLogin() == user {
+				client.AddToProject(ctx, projectId, payload.GetIssue().GetHTMLURL())
 				continue
 			}
-			client.AddToProject(ctx, projectId, payload.GetIssue().GetHTMLURL())
+			// If this issue is assigned to me.
+			if payload.GetIssue().GetAssignee().GetLogin() == user {
+				client.AddToProject(ctx, projectId, payload.GetIssue().GetHTMLURL())
+				continue
+			}
+			// If I'm in the Assignees lists of this issue.
+			for _, assignee := range payload.GetIssue().Assignees {
+				if assignee.GetLogin() == user {
+					client.AddToProject(ctx, projectId, payload.GetIssue().GetHTMLURL())
+					continue
+				}
+			}
+			continue
 		case "PullRequestEvent":
 			payload := &github.PullRequestEvent{}
 			err := json.Unmarshal(event.GetRawPayload(), &payload)
 			if err != nil {
 				log.Fatalf("unmarshal PullRequestEvent failed: %s", err)
 			}
-			if payload.GetPullRequest().GetUser().GetLogin() != os.Getenv(AATP_USER) {
+			// If this PR is created by me.
+			if payload.GetPullRequest().GetUser().GetLogin() == user {
+				client.AddToProject(ctx, projectId, payload.GetPullRequest().GetHTMLURL())
 				continue
 			}
-			client.AddToProject(ctx, projectId, payload.GetPullRequest().GetHTMLURL())
+			continue
 		default:
 			log.Printf("event type is %s, ignore", event.GetType())
 			continue

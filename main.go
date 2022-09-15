@@ -44,7 +44,7 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 	// List assigned issues.
 	opt := &github.IssueListOptions{
 		Filter: "assigned",
-		State:  "open",
+		State:  "all",
 		ListOptions: github.ListOptions{
 			PerPage: 100,
 		},
@@ -64,7 +64,7 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 	// List created issues.
 	opt = &github.IssueListOptions{
 		Filter: "created",
-		State:  "open",
+		State:  "all",
 		ListOptions: github.ListOptions{
 			PerPage: 100,
 		},

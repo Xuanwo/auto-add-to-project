@@ -37,7 +37,9 @@ func NewClient(ctx context.Context) *Client {
 }
 
 func (c *Client) ListEvents(ctx context.Context) []*github.Event {
-	events, _, err := c.restClient.Activity.ListEventsPerformedByUser(ctx, os.Getenv(AATP_USER), true, &github.ListOptions{})
+	events, _, err := c.restClient.Activity.ListEventsPerformedByUser(ctx, os.Getenv(AATP_USER), true, &github.ListOptions{
+		PerPage: 100,
+	})
 	if err != nil {
 		log.Fatalf("list event failed: %s", err)
 	}
@@ -101,12 +103,15 @@ func main() {
 	ctx := context.Background()
 	client := NewClient(ctx)
 
+	// Get value from env
+	user := os.Getenv(AATP_USER)
+
 	// Get project id
 	projectNumber, err := strconv.Atoi(os.Getenv(AATP_PROJECT_NUMBER))
 	if err != nil {
 		log.Fatalf("input project number is invalid: %s", os.Getenv(AATP_PROJECT_NUMBER))
 	}
-	projectId := client.GetProjectId(ctx, os.Getenv(AATP_USER), projectNumber)
+	projectId := client.GetProjectId(ctx, user, projectNumber)
 
 	// List events
 	events := client.ListEvents(ctx)
@@ -120,7 +125,7 @@ func main() {
 			if err != nil {
 				log.Fatalf("unmarshal IssuesEvent failed: %s", err)
 			}
-			if payload.GetIssue().GetUser().GetLogin() != os.Getenv(AATP_USER) {
+			if payload.GetIssue().GetUser().GetLogin() != user && payload.GetIssue().GetAssignee().GetLogin() != user {
 				continue
 			}
 			client.AddToProject(ctx, projectId, payload.GetIssue().GetHTMLURL())

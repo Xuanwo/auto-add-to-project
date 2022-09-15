@@ -41,8 +41,29 @@ func NewClient(ctx context.Context) *Client {
 func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 	var allIssues []*github.Issue
 
+	// List assigned issues.
 	opt := &github.IssueListOptions{
-		Filter: "assigned,created",
+		Filter: "assigned",
+		State:  "open",
+		ListOptions: github.ListOptions{
+			PerPage: 100,
+		},
+	}
+	for {
+		issues, resp, err := c.restClient.Issues.List(ctx, true, opt)
+		if err != nil {
+			log.Fatalf("list issues failed: %s", err)
+		}
+		allIssues = append(allIssues, issues...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	// List created issues.
+	opt = &github.IssueListOptions{
+		Filter: "created",
 		State:  "open",
 		ListOptions: github.ListOptions{
 			PerPage: 100,

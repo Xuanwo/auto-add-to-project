@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"os"
 	"strconv"
@@ -36,16 +35,32 @@ func NewClient(ctx context.Context) *Client {
 	}
 }
 
-func (c *Client) ListEvents(ctx context.Context) []*github.Event {
-	events, _, err := c.restClient.Activity.ListEventsPerformedByUser(ctx, os.Getenv(AATP_USER), true, &github.ListOptions{
-		PerPage: 100,
-	})
-	if err != nil {
-		log.Fatalf("list event failed: %s", err)
+// ListIssues will list all issues of mine.
+//
+// GitHub V3 treat every PR as an issue, so we don't need to list PRs.
+func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
+	var allIssues []*github.Issue
+
+	opt := &github.IssueListOptions{
+		Filter: "assigned,created",
+		State:  "open",
+		ListOptions: github.ListOptions{
+			PerPage: 100,
+		},
+	}
+	for {
+		issues, resp, err := c.restClient.Issues.List(ctx, true, opt)
+		if err != nil {
+			log.Fatalf("list issues failed: %s", err)
+		}
+		allIssues = append(allIssues, issues...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
 	}
 
-	log.Printf("got %d events", len(events))
-	return events
+	return allIssues
 }
 
 func (c *Client) GetProjectId(ctx context.Context, owner string, number int) string {
@@ -114,50 +129,13 @@ func main() {
 	projectId := client.GetProjectId(ctx, user, projectNumber)
 
 	// List events
-	events := client.ListEvents(ctx)
+	issues := client.ListIssues(ctx)
 
-	// Filter events
-	for _, event := range events {
-		switch event.GetType() {
-		case "IssuesEvent":
-			payload := &github.IssueEvent{}
-			err := json.Unmarshal(event.GetRawPayload(), &payload)
-			if err != nil {
-				log.Fatalf("unmarshal IssuesEvent failed: %s", err)
-			}
-			// If this issue is created by myself.
-			if payload.GetIssue().GetUser().GetLogin() == user {
-				client.AddToProject(ctx, projectId, payload.GetIssue().GetHTMLURL())
-				continue
-			}
-			// If this issue is assigned to me.
-			if payload.GetIssue().GetAssignee().GetLogin() == user {
-				client.AddToProject(ctx, projectId, payload.GetIssue().GetHTMLURL())
-				continue
-			}
-			// If I'm in the Assignees lists of this issue.
-			for _, assignee := range payload.GetIssue().Assignees {
-				if assignee.GetLogin() == user {
-					client.AddToProject(ctx, projectId, payload.GetIssue().GetHTMLURL())
-					continue
-				}
-			}
-			continue
-		case "PullRequestEvent":
-			payload := &github.PullRequestEvent{}
-			err := json.Unmarshal(event.GetRawPayload(), &payload)
-			if err != nil {
-				log.Fatalf("unmarshal PullRequestEvent failed: %s", err)
-			}
-			// If this PR is created by me.
-			if payload.GetPullRequest().GetUser().GetLogin() == user {
-				client.AddToProject(ctx, projectId, payload.GetPullRequest().GetHTMLURL())
-				continue
-			}
-			continue
-		default:
-			log.Printf("event type is %s, ignore", event.GetType())
-			continue
-		}
+	// Add into project.
+	//
+	// Issues have been filtered at GitHub server side.
+	// It's safe for us to add into project directly.
+	for _, issue := range issues {
+		client.AddToProject(ctx, projectId, issue.GetHTMLURL())
 	}
 }

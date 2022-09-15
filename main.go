@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/google/go-github/v47/github"
 	"github.com/shurcooL/githubv4"
@@ -45,6 +46,7 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 	opt := &github.IssueListOptions{
 		Filter: "assigned",
 		State:  "all",
+		Since:  time.Now().Add(-24 * time.Hour),
 		ListOptions: github.ListOptions{
 			PerPage: 100,
 		},
@@ -65,6 +67,7 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 	opt = &github.IssueListOptions{
 		Filter: "created",
 		State:  "all",
+		Since:  time.Now().Add(-24 * time.Hour),
 		ListOptions: github.ListOptions{
 			PerPage: 100,
 		},

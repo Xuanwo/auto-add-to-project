@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"os"
-	"strconv"
+	"sort"
 	"time"
 
 	"github.com/google/go-github/v47/github"
@@ -15,6 +17,7 @@ import (
 const (
 	AATP_TOKEN          = "AATP_TOKEN"
 	AATP_USER           = "AATP_USER"
+	AATP_PATH           = "AATP_PATH"
 	AATP_PROJECT_NUMBER = "AATP_PROJECT_NUMBER"
 )
 
@@ -46,7 +49,7 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 	opt := &github.IssueListOptions{
 		Filter: "assigned",
 		State:  "all",
-		Since:  time.Now().Add(-24 * time.Hour),
+		Since:  WeekStart(time.Now().ISOWeek()),
 		ListOptions: github.ListOptions{
 			PerPage: 100,
 		},
@@ -87,79 +90,89 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 	return allIssues
 }
 
-func (c *Client) GetProjectId(ctx context.Context, owner string, number int) string {
-	var q struct {
-		User struct {
-			ProjectV2 struct {
-				Id string
-			} `graphql:"projectV2(number: $number)"`
-		} `graphql:"user(login: $owner)"`
-	}
-	variables := map[string]interface{}{
-		"owner":  githubv4.String(owner),
-		"number": githubv4.Int(number),
+// title:: Iteration/6
+// type:: [[Iteration]]
+// date:: 2022-01-29 - 2022-02-11
+//
+// - content
+func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) string {
+	w := &bytes.Buffer{}
+
+	now := time.Now()
+	year, week := now.ISOWeek()
+	start, end := WeekStart(year, week), WeekStart(year, week).AddDate(0, 0, 6)
+
+	w.WriteString(fmt.Sprintf("title:: Iteration/%d-%d\n", year, week))
+	w.WriteString("type:: [[Iteration]]\n")
+	w.WriteString(fmt.Sprintf("date:: %s - %s\n", start.Format("2006-01-02"), end.Format("2006-01-02")))
+	w.WriteString("\n")
+
+	m := map[string][]*github.Issue{}
+	for _, issue := range issues {
+		name := fmt.Sprintf("%s/%s", *issue.Repository.Owner.Login, *issue.Repository.Name)
+		m[name] = append(m[name], issue)
 	}
 
-	err := c.graphqlClient.Query(ctx, &q, variables)
-	if err != nil {
-		log.Fatalf("get project id failed: %s", err)
+	repos := make([]string, 0, len(m))
+	for k := range m {
+		repos = append(repos, k)
+	}
+	sort.Strings(repos)
+
+	for _, repo := range repos {
+		w.WriteString(fmt.Sprintf("- %s\n", repo))
+
+		sort.Slice(m[repo], func(i, j int) bool {
+			return m[repo][i].UpdatedAt.Before(*m[repo][j].UpdatedAt)
+		})
+		for _, issue := range m[repo] {
+			w.WriteString(fmt.Sprintf("  - [%s](%s) %s\n", *issue.Title, *issue.HTMLURL, *issue.State))
+		}
 	}
 
-	log.Printf("project id is: %s", q.User.ProjectV2.Id)
-	return q.User.ProjectV2.Id
+	return w.String()
 }
 
-func (c *Client) AddToProject(ctx context.Context, projectId, contentUrl string) {
-	var m struct {
-		AddProjectV2DraftIssue struct {
-			ProjectItem struct {
-				Id string
-			}
-		} `graphql:"addProjectV2DraftIssue(input: $input)"`
+func WeekStart(year, week int) time.Time {
+	t := time.Date(year, 7, 1, 0, 0, 0, 0, time.UTC)
+
+	// Roll back to Monday:
+	if wd := t.Weekday(); wd == time.Sunday {
+		t = t.AddDate(0, 0, -6)
+	} else {
+		t = t.AddDate(0, 0, -int(wd)+1)
 	}
 
-	type AddProjectV2DraftIssueInput struct {
-		// The ID of the Project to add the item to. (Required.)
-		ProjectID string `json:"projectId"`
-		// The content id of the item (Issue or PullRequest). (Required.)
-		Title string `json:"title"`
-	}
+	// Difference in weeks:
+	_, w := t.ISOWeek()
+	t = t.AddDate(0, 0, (week-w)*7)
 
-	input := AddProjectV2DraftIssueInput{
-		ProjectID: projectId,
-		Title:     contentUrl,
-	}
-
-	err := c.graphqlClient.Mutate(ctx, &m, input, nil)
-	if err != nil {
-		// Print and ignore errors.
-		log.Printf("add to project failed: %s", err)
-	}
-	log.Printf("content %s has been added in project %s", contentUrl, projectId)
+	return t
 }
 
 func main() {
 	ctx := context.Background()
 	client := NewClient(ctx)
 
-	// Get value from env
-	user := os.Getenv(AATP_USER)
-
-	// Get project id
-	projectNumber, err := strconv.Atoi(os.Getenv(AATP_PROJECT_NUMBER))
-	if err != nil {
-		log.Fatalf("input project number is invalid: %s", os.Getenv(AATP_PROJECT_NUMBER))
-	}
-	projectId := client.GetProjectId(ctx, user, projectNumber)
-
 	// List events
 	issues := client.ListIssues(ctx)
 
-	// Add into project.
-	//
-	// Issues have been filtered at GitHub server side.
-	// It's safe for us to add into project directly.
-	for _, issue := range issues {
-		client.AddToProject(ctx, projectId, issue.GetHTMLURL())
+	// Wirte into markdown
+	bs := client.WriteMarkdown(ctx, issues)
+
+	println(bs)
+
+	now := time.Now()
+	year, week := now.ISOWeek()
+
+	f, err := os.Create(fmt.Sprintf("%s/Iteration.%d-%d.md", os.Getenv(AATP_PATH), year, week))
+	if err != nil {
+		log.Fatalf("create file: %v", err)
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(bs)
+	if err != nil {
+		log.Fatalf("write file: %v", err)
 	}
 }

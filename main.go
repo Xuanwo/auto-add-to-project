@@ -70,7 +70,7 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 	opt = &github.IssueListOptions{
 		Filter: "created",
 		State:  "all",
-		Since:  time.Now().Add(-24 * time.Hour),
+		Since:  WeekStart(time.Now().ISOWeek()),
 		ListOptions: github.ListOptions{
 			PerPage: 100,
 		},

@@ -44,6 +44,7 @@ func NewClient(ctx context.Context) *Client {
 // GitHub V3 treat every PR as an issue, so we don't need to list PRs.
 func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 	var allIssues []*github.Issue
+	addedIssues := make(map[string]struct{})
 
 	// List assigned issues.
 	opt := &github.IssueListOptions{
@@ -59,7 +60,16 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 		if err != nil {
 			log.Fatalf("list issues failed: %s", err)
 		}
-		allIssues = append(allIssues, issues...)
+
+		for _, issue := range issues {
+			issue := issue
+			if _, ok := addedIssues[*issue.HTMLURL]; ok {
+				continue
+			}
+			addedIssues[*issue.HTMLURL] = struct{}{}
+			allIssues = append(allIssues, issue)
+		}
+
 		if resp.NextPage == 0 {
 			break
 		}
@@ -80,7 +90,16 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 		if err != nil {
 			log.Fatalf("list issues failed: %s", err)
 		}
-		allIssues = append(allIssues, issues...)
+
+		for _, issue := range issues {
+			issue := issue
+			if _, ok := addedIssues[*issue.HTMLURL]; ok {
+				continue
+			}
+			addedIssues[*issue.HTMLURL] = struct{}{}
+			allIssues = append(allIssues, issue)
+		}
+
 		if resp.NextPage == 0 {
 			break
 		}

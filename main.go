@@ -184,7 +184,7 @@ func main() {
 	now := time.Now()
 	year, week := now.ISOWeek()
 
-	f, err := os.Create(fmt.Sprintf("%s/Iteration.%d-%d.md", os.Getenv(AATP_PATH), year, week))
+	f, err := os.Create(fmt.Sprintf("%s/Iteration___%d-%d.md", os.Getenv(AATP_PATH), year, week))
 	if err != nil {
 		log.Fatalf("create file: %v", err)
 	}

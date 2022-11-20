@@ -128,7 +128,7 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 
 	m := map[string][]*github.Issue{}
 	for _, issue := range issues {
-		name := fmt.Sprintf("%s/%s", *issue.Repository.Owner.Login, *issue.Repository.Name)
+		name := fmt.Sprintf("[[%s]]/[[%s]]", *issue.Repository.Owner.Login, *issue.Repository.Name)
 		m[name] = append(m[name], issue)
 	}
 

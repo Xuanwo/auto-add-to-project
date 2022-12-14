@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v47/github"
@@ -106,6 +107,65 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 		opt.Page = resp.NextPage
 	}
 
+	sopt := &github.SearchOptions{
+		Sort:      "updated",
+		Order:     "desc",
+		TextMatch: false,
+	}
+	since := WeekStart(time.Now().ISOWeek()).Format("2006-01-02")
+
+	for {
+		issues, resp, err := c.restClient.Search.Issues(ctx, fmt.Sprintf("is:issue involves:Xuanwo updated:>=%s", since), sopt)
+
+		if err != nil {
+			log.Fatalf("list issues failed: %s", err)
+		}
+		if issues == nil {
+			break
+		}
+		for _, issue := range issues.Issues {
+			issue := issue
+			if _, ok := addedIssues[*issue.HTMLURL]; ok {
+				continue
+			}
+			addedIssues[*issue.HTMLURL] = struct{}{}
+			allIssues = append(allIssues, issue)
+		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+		sopt.Page = resp.NextPage
+	}
+
+	sopt = &github.SearchOptions{
+		Sort:      "updated",
+		Order:     "desc",
+		TextMatch: false,
+	}
+	for {
+		issues, resp, err := c.restClient.Search.Issues(ctx, fmt.Sprintf("is:pull-request involves:Xuanwo updated:>=%s", since), sopt)
+		if err != nil {
+			log.Fatalf("list issues failed: %s", err)
+		}
+		if issues == nil {
+			break
+		}
+		for _, issue := range issues.Issues {
+			issue := issue
+			if _, ok := addedIssues[*issue.HTMLURL]; ok {
+				continue
+			}
+			addedIssues[*issue.HTMLURL] = struct{}{}
+			allIssues = append(allIssues, issue)
+		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+		sopt.Page = resp.NextPage
+	}
+
 	return allIssues
 }
 
@@ -128,7 +188,14 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 
 	m := map[string][]*github.Issue{}
 	for _, issue := range issues {
-		name := fmt.Sprintf("[[%s/%s]]", *issue.Repository.Owner.Login, *issue.Repository.Name)
+		name := ""
+		if issue.Repository == nil {
+			name = strings.ReplaceAll(*issue.RepositoryURL, "https://api.github.com/repos/", "")
+			name = fmt.Sprintf("[[%s]]", name)
+		} else {
+			name = fmt.Sprintf("[[%s/%s]]", *issue.Repository.Owner.Login, *issue.Repository.Name)
+		}
+
 		m[name] = append(m[name], issue)
 	}
 

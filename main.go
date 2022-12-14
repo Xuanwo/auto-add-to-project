@@ -47,66 +47,6 @@ func (c *Client) ListIssues(ctx context.Context) []*github.Issue {
 	var allIssues []*github.Issue
 	addedIssues := make(map[string]struct{})
 
-	// List assigned issues.
-	opt := &github.IssueListOptions{
-		Filter: "assigned",
-		State:  "all",
-		Since:  WeekStart(time.Now().ISOWeek()),
-		ListOptions: github.ListOptions{
-			PerPage: 100,
-		},
-	}
-	for {
-		issues, resp, err := c.restClient.Issues.List(ctx, true, opt)
-		if err != nil {
-			log.Fatalf("list issues failed: %s", err)
-		}
-
-		for _, issue := range issues {
-			issue := issue
-			if _, ok := addedIssues[*issue.HTMLURL]; ok {
-				continue
-			}
-			addedIssues[*issue.HTMLURL] = struct{}{}
-			allIssues = append(allIssues, issue)
-		}
-
-		if resp.NextPage == 0 {
-			break
-		}
-		opt.Page = resp.NextPage
-	}
-
-	// List created issues.
-	opt = &github.IssueListOptions{
-		Filter: "created",
-		State:  "all",
-		Since:  WeekStart(time.Now().ISOWeek()),
-		ListOptions: github.ListOptions{
-			PerPage: 100,
-		},
-	}
-	for {
-		issues, resp, err := c.restClient.Issues.List(ctx, true, opt)
-		if err != nil {
-			log.Fatalf("list issues failed: %s", err)
-		}
-
-		for _, issue := range issues {
-			issue := issue
-			if _, ok := addedIssues[*issue.HTMLURL]; ok {
-				continue
-			}
-			addedIssues[*issue.HTMLURL] = struct{}{}
-			allIssues = append(allIssues, issue)
-		}
-
-		if resp.NextPage == 0 {
-			break
-		}
-		opt.Page = resp.NextPage
-	}
-
 	sopt := &github.SearchOptions{
 		Sort:      "updated",
 		Order:     "desc",

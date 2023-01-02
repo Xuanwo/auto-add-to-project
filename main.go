@@ -121,7 +121,7 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 	year, week := now.ISOWeek()
 	start, end := WeekStart(year, week), WeekStart(year, week).AddDate(0, 0, 6)
 
-	w.WriteString(fmt.Sprintf("title:: Iteration/%d-%d\n", year, week))
+	w.WriteString(fmt.Sprintf("title:: Iteration/%02d-%02d\n", year, week))
 	w.WriteString("type:: [[Iteration]]\n")
 	w.WriteString(fmt.Sprintf("date:: %s - %s\n", start.Format("2006-01-02"), end.Format("2006-01-02")))
 	w.WriteString("\n")
@@ -191,7 +191,7 @@ func main() {
 	now := time.Now()
 	year, week := now.ISOWeek()
 
-	f, err := os.Create(fmt.Sprintf("%s/Iteration___%d-%d.md", os.Getenv(AATP_PATH), year, week))
+	f, err := os.Create(fmt.Sprintf("%s/Iteration___%02d-%02d.md", os.Getenv(AATP_PATH), year, week))
 	if err != nil {
 		log.Fatalf("create file: %v", err)
 	}

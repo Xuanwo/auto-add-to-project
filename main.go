@@ -127,7 +127,7 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 
 	w.WriteString("- {{query (and (property project) (page <% current page %>)) )}}\n")
 	w.WriteString("  query-table:: true\n")
-	w.WriteString("  query-properties:: [:project :title :date :author]\n")
+	w.WriteString("  query-properties:: [:date :author :project :title]\n")
 	w.WriteString("  query-sort-by:: project\n")
 	w.WriteString("  query-sort-desc:: false\n")
 	w.WriteString("-\n")

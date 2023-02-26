@@ -126,14 +126,18 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 	w.WriteString(fmt.Sprintf("date:: %s - %s\n", start.Format("2006-01-02"), end.Format("2006-01-02")))
 	w.WriteString("\n")
 
+	w.WriteString("- {{query (and (property date) (page <% current page %>)) )}}\n")
+	w.WriteString("  query-table:: true\n")
+	w.WriteString("  query-properties:: [:project :title :date :author :state]\n")
+	w.WriteString("-\n")
+
 	m := map[string][]*github.Issue{}
 	for _, issue := range issues {
 		name := ""
 		if issue.Repository == nil {
 			name = strings.ReplaceAll(*issue.RepositoryURL, "https://api.github.com/repos/", "")
-			name = fmt.Sprintf("[[%s]]", name)
 		} else {
-			name = fmt.Sprintf("[[%s/%s]]", *issue.Repository.Owner.Login, *issue.Repository.Name)
+			name = fmt.Sprintf("%s/%s", *issue.Repository.Owner.Login, *issue.Repository.Name)
 		}
 
 		m[name] = append(m[name], issue)
@@ -152,10 +156,11 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 			return m[repo][i].UpdatedAt.Before(*m[repo][j].UpdatedAt)
 		})
 		for _, issue := range m[repo] {
-			w.WriteString(fmt.Sprintf("  - [%s](%s)\n", *issue.Title, *issue.HTMLURL))
-			w.WriteString(fmt.Sprintf("    - date:: [[%s]]\n", issue.UpdatedAt.Format("2006-01-02")))
-			w.WriteString(fmt.Sprintf("      author:: [[%s]]\n", issue.User.GetLogin()))
-			w.WriteString(fmt.Sprintf("      state:: %s\n", *issue.State))
+			w.WriteString(fmt.Sprintf("- project:: [[%s]]\n", repo))
+			w.WriteString(fmt.Sprintf("  title:: [%s](%s)\n", *issue.Title, *issue.HTMLURL))
+			w.WriteString(fmt.Sprintf("  date:: [[%s]]\n", issue.UpdatedAt.Format("2006-01-02")))
+			w.WriteString(fmt.Sprintf("  author:: [[%s]]\n", issue.User.GetLogin()))
+			w.WriteString(fmt.Sprintf("  state:: %s\n", *issue.State))
 		}
 	}
 

@@ -152,7 +152,10 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 			return m[repo][i].UpdatedAt.Before(*m[repo][j].UpdatedAt)
 		})
 		for _, issue := range m[repo] {
-			w.WriteString(fmt.Sprintf("  - [[%s]] [[%s]]: [%s](%s)\n", issue.UpdatedAt.Format("2006-01-02"), issue.User.GetLogin(), *issue.Title, *issue.HTMLURL))
+			w.WriteString(fmt.Sprintf("  - [%s](%s)\n", *issue.Title, *issue.HTMLURL))
+			w.WriteString(fmt.Sprintf("    - date:: [[%s]]\n", issue.UpdatedAt.Format("2006-01-02")))
+			w.WriteString(fmt.Sprintf("      author: [[%s]]\n", issue.User.GetLogin()))
+			w.WriteString(fmt.Sprintf("      state: %s\n", *issue.State))
 		}
 	}
 

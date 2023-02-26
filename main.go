@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
@@ -147,14 +146,8 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 	for k := range m {
 		repos = append(repos, k)
 	}
-	sort.Strings(repos)
 
 	for _, repo := range repos {
-		w.WriteString(fmt.Sprintf("- %s\n", repo))
-
-		sort.Slice(m[repo], func(i, j int) bool {
-			return m[repo][i].UpdatedAt.Before(*m[repo][j].UpdatedAt)
-		})
 		for _, issue := range m[repo] {
 			w.WriteString(fmt.Sprintf("- project:: [[%s]]\n", repo))
 			w.WriteString(fmt.Sprintf("  title:: [%s](%s)\n", *issue.Title, *issue.HTMLURL))

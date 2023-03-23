@@ -125,7 +125,16 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 	w.WriteString(fmt.Sprintf("date:: %s - %s\n", start.Format("2006-01-02"), end.Format("2006-01-02")))
 	w.WriteString("\n")
 
-	w.WriteString("- {{query (and (property project) (page <% current page %>)) )}}\n")
+	w.WriteString("- {{query (and (property project) (page <% current page %>) (property author Xuanwo)))}}\n")
+	w.WriteString("  query-table:: true\n")
+	w.WriteString("  query-properties:: [:project :title :date]\n")
+	w.WriteString("  query-sort-by:: project\n")
+	w.WriteString("  query-sort-desc:: false\n")
+	w.WriteString("-\n")
+
+	w.WriteString("-\n")
+
+	w.WriteString("- {{query (and (property project) (page <% current page %>) (not (property author Xuanwo))))}}\n")
 	w.WriteString("  query-table:: true\n")
 	w.WriteString("  query-properties:: [:date :author :project :title]\n")
 	w.WriteString("  query-sort-by:: project\n")

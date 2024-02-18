@@ -120,26 +120,13 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 	year, week := now.ISOWeek()
 	start, end := WeekStart(year, week), WeekStart(year, week).AddDate(0, 0, 6)
 
-	w.WriteString(fmt.Sprintf("title:: Iteration/%02d-%02d\n", year, week))
-	w.WriteString("type:: [[Iteration]]\n")
-	w.WriteString(fmt.Sprintf("date:: %s - %s\n", start.Format("2006-01-02"), end.Format("2006-01-02")))
+    w.WriteString("---\n")
+	w.WriteString(fmt.Sprintf("duration: %s - %s\n", start.Format("2006-01-02"), end.Format("2006-01-02")))
+	w.WriteString("---\n")
 	w.WriteString("\n")
 
-	w.WriteString("- {{query (and (property project) (page <% current page %>) (property author Xuanwo)))}}\n")
-	w.WriteString("  query-table:: true\n")
-	w.WriteString("  query-properties:: [:project :title :date]\n")
-	w.WriteString("  query-sort-by:: project\n")
-	w.WriteString("  query-sort-desc:: false\n")
-	w.WriteString("-\n")
-
-	w.WriteString("-\n")
-
-	w.WriteString("- {{query (and (property project) (page <% current page %>) (not (property author Xuanwo))))}}\n")
-	w.WriteString("  query-table:: true\n")
-	w.WriteString("  query-properties:: [:date :author :project :title]\n")
-	w.WriteString("  query-sort-by:: project\n")
-	w.WriteString("  query-sort-desc:: false\n")
-	w.WriteString("-\n")
+	w.WriteString("| project | title | date | author |\n")
+	w.WriteString("| - | - | - | - |\n")
 
 	m := map[string][]*github.Issue{}
 	for _, issue := range issues {
@@ -160,10 +147,15 @@ func (c *Client) WriteMarkdown(ctx context.Context, issues []*github.Issue) stri
 
 	for _, repo := range repos {
 		for _, issue := range m[repo] {
-			w.WriteString(fmt.Sprintf("- project:: [[%s]]\n", repo))
-			w.WriteString(fmt.Sprintf("  title:: [%s](%s)\n", *issue.Title, *issue.HTMLURL))
-			w.WriteString(fmt.Sprintf("  date:: [[%s]]\n", issue.UpdatedAt.Format("2006-01-02")))
-			w.WriteString(fmt.Sprintf("  author:: [[%s]]\n", issue.User.GetLogin()))
+		    w.WriteString("|")
+			w.WriteString(fmt.Sprintf("[[%s]]", repo))
+			w.WriteString("|")
+			w.WriteString(fmt.Sprintf("[%s](%s)", *issue.Title, *issue.HTMLURL))
+			w.WriteString("|")
+			w.WriteString(fmt.Sprintf("[[%s]]", issue.UpdatedAt.Format("2006-01-02")))
+			w.WriteString("|")
+			w.WriteString(fmt.Sprintf("[[%s]]", issue.User.GetLogin()))
+			w.WriteString("|\n")
 		}
 	}
 
@@ -202,7 +194,7 @@ func main() {
 	now := time.Now()
 	year, week := now.ISOWeek()
 
-	f, err := os.Create(fmt.Sprintf("%s/Iteration___%02d-%02d.md", os.Getenv(AATP_PATH), year, week))
+	f, err := os.Create(fmt.Sprintf("%s/03-Resources/Iteration/%02d-%02d.md", os.Getenv(AATP_PATH), year, week))
 	if err != nil {
 		log.Fatalf("create file: %v", err)
 	}
